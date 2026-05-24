@@ -251,7 +251,7 @@ curl -X POST \
 http://localhost:3000/api/events \
 -H "Content-Type: application/json" \
 -d '{
-  "taskId":"task-1",
+  "eventId":"event-1",
   "title":"Generate Invoice"
 }'
 ```
