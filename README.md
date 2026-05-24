@@ -262,16 +262,16 @@ http://localhost:3000/api/events \
 
 ```txt
 [API]
-queued event-123
+queued event-1
 
 [worker-1]
-processing event-123
+processing event-1
 
 [EVENT RECEIVED]
 Generate Invoice
 
 [EVENT COMPLETED]
-task-1
+event-1
 
 [METRICS]
 processed=1
