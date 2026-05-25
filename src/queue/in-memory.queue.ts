@@ -1,13 +1,13 @@
-import type {Event} from '../events/event.types';
+import type {BaseEvent} from '../events/event.types';
 
 export class InMemoryQueue {
-    private queue: Event[] = [];
+    private queue: BaseEvent[] = [];
 
-    enqueue(event: Event){
+    enqueue(event: BaseEvent){
         this.queue.push(event);
     }
 
-    dequeue(): Event | undefined {
+    dequeue(): BaseEvent | undefined {
         return this.queue.shift();
     }
 

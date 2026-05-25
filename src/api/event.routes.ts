@@ -1,15 +1,18 @@
 import express from 'express';
 import { eventQueue } from '../queue/in-memory.queue';
-import type { Event } from '../events/event.types';
+import type { Event, BaseEvent } from '../events/event.types';
+import type { TaskPayload} from '../events/payloads/task.payload';
 
 export const router = express.Router();
 
 router.post('/events', (req, res) => {
-    const event: Event = {
+    const {taskId, title} = req.body;
+    const event: BaseEvent<TaskPayload> = {
         id: crypto.randomUUID(),
+        type: 'TASK_CREATED',
         payload: {
-            eventId: req.body.eventId,
-            title: req.body.title,
+            taskId,
+            title
         },
         createdAt: Date.now(),
         retryCount:0,

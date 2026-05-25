@@ -1,10 +1,10 @@
-import type { Event } from "../events/event.types";
+import type { BaseEvent } from "../events/event.types";
 
 function sleep(ms: number){
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function processEvent(event: Event) {
+export async function processEvent(event: BaseEvent) {
 
     console.log(`[PROCESSING TASK] ${event.payload.title}`);
 
