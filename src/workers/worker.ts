@@ -1,6 +1,27 @@
+/*
+workerLoop
+   ↓
+dequeue event
+   ↓
+lookup handler
+   ↓
+metrics start
+   ↓
+try handle()
+   ↓
+success/failure
+   ↓
+retry if needed
+   ↓
+metrics end
+*/
+
+
 import { eventQueue } from "../queue/in-memory.queue";
 import { processEvent } from "../handlers/event.handlers";
 import { metrics } from "../metrics/metrics.store";
+import {eventRegistry} from "../events/event.registry";
+
 
 function sleep(ms: number){
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -34,7 +55,23 @@ async function workerLoop(workerName: string){
     }
 }
 
-export function startWorker(){
-    workerLoop("worker-1");
-    workerLoop("worker-2");
+export async function startWorker(){
+    console.log("[WORKER] Started");
+    setInterval( async () => {
+        const event = eventQueue.dequeue();
+
+        if(!event) return;
+
+        console.log(`[WORKER] processing ${event.id}`);
+
+        const handler = eventRegistry[event.type];
+
+        if(!handler) {
+            console.log(`[WORKER] No handler found for ${event.type}`);
+            return;
+        }
+
+        await handler.handle(event);
+
+    }, 1000);
 }
