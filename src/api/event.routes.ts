@@ -7,10 +7,15 @@ import {eventValidatorRegistry} from "../events/event-validator.registry";
 export const router = express.Router();
 
 router.post('/events', (req, res) => {
+    console.log(req.body);
+    
     const {type, payload} = req.body;
+    console.log(type, payload);
+    if (!type || !payload) return res.status(400).json({success: false, message:"type and payload required"});
+
     const validator = eventValidatorRegistry[type];
     if(!validator) return res.status(400).json({success: false, message:"Unknown event type"});
-    if( !validator.validate(payload)) return res.json({success: false, message: "Invalid payload"});
+    if( !validator.validate(payload)) return res.status(400).json({success: false, message: "Invalid payload"});
 
 
     const event: BaseEvent = {
