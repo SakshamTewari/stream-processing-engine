@@ -16,44 +16,16 @@ retry if needed
 metrics end
 */
 
-
+import { WORKER_CONFIG} from "../config/worker.config";
 import { eventQueue } from "../queue/in-memory.queue";
-import { processEvent } from "../handlers/event.handlers";
-import { metrics } from "../metrics/metrics.store";
 import {eventRegistry} from "../events/event.registry";
 
-
+/*
 function sleep(ms: number){
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+*/
 
-async function workerLoop(workerName: string){
-    while(true){
-        const event = eventQueue.dequeue();
-
-        if(!event){
-            await sleep(500); // wait before checking for new events
-            continue;
-        }
-
-        try {
-            console.log(`[${workerName}] processing ${event.id}`);
-            await processEvent(event);
-            metrics.processed++;
-        } catch(err){
-            metrics.failed++;
-            if(event.retryCount < 3){
-                event.retryCount++;
-                metrics.retried++;
-                console.log(`[${workerName} retrying ${event.id}]`);
-                eventQueue.enqueue(event);
-            } else {
-                console.log(`[DEAD LETTER QUEUE] ${event.id} failed permanently`);
-            }
-        }
-        console.log(`[METRICS] processed=${metrics.processed} ||| failed=${metrics.failed} ||| retried=${metrics.retried} ||| queue=${eventQueue.size()}`);
-    }
-}
 
 export async function startWorker(){
     console.log("[WORKER] Started");
@@ -71,7 +43,19 @@ export async function startWorker(){
             return;
         }
 
+        try {
         await handler.handle(event);
+        console.log(`[WORKER] Successfully processed ${event.id}`);
+        } catch(error){
+            console.log(`[WORKER] Error Processing ${event.id}: ${error}`);
+            event.retryCount++;
+            if(event.retryCount <= WORKER_CONFIG.MAX_RETRIES){
+                console.log(`[WORKER] Retrying ${event.id} (Attempt ${event.retryCount})`);
+                eventQueue.enqueue(event);
+            } else {
+                console.log(`[WORKER] Dead-Lettered ${event.id}`);
+            }
+        }
 
-    }, 1000);
+    }, WORKER_CONFIG.POLL_INTERVAL_MS);
 }
