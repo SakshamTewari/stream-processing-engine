@@ -19,6 +19,7 @@ metrics end
 import { WORKER_CONFIG} from "../config/worker.config";
 import { eventQueue } from "../queue/in-memory.queue";
 import {eventRegistry} from "../events/event.registry";
+import {deadLetterQueue} from "../queue/dead-letter-queue";
 
 /*
 function sleep(ms: number){
@@ -53,6 +54,7 @@ export async function startWorker(){
                 console.log(`[WORKER] Retrying ${event.id} (Attempt ${event.retryCount})`);
                 eventQueue.enqueue(event);
             } else {
+                deadLetterQueue.add(event);
                 console.log(`[WORKER] Dead-Lettered ${event.id}`);
             }
         }
