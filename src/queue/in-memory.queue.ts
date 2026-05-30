@@ -1,6 +1,7 @@
 import type {BaseEvent} from '../events/event.types';
+import type {Queue} from './queue.interface';
 
-export class InMemoryQueue {
+export class InMemoryQueue implements Queue{
     private queue: BaseEvent[] = [];
 
     enqueue(event: BaseEvent){
