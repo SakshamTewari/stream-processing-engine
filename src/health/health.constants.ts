@@ -1,0 +1,3 @@
+export const HEALTH_THRESHOLDS = {
+    DEGRADED_QUEUE_DEPTH : 1000,
+}
