@@ -17,9 +17,12 @@ metrics end
 */
 
 import { WORKER_CONFIG} from "../config/worker.config";
-import { eventQueue } from "../queue/in-memory.queue";
+import {getQueue} from "../queue/queue.factory";
 import {eventRegistry} from "../events/event.registry";
 import {deadLetterQueue} from "../queue/dead-letter-queue";
+import {metricsService} from "../metrics/metrics.service";
+import { loggingService } from "../logging/logging.service";
+import  { LOG_COMPONENTS } from "../logging/logging.constants";
 
 /*
 function sleep(ms: number){
@@ -30,8 +33,10 @@ function sleep(ms: number){
 
 export async function startWorker(){
     console.log("[WORKER] Started");
+
+    const queue = getQueue();
     setInterval( async () => {
-        const event = eventQueue.dequeue();
+        const event = queue.dequeue();
 
         if(!event) return;
 
@@ -40,22 +45,29 @@ export async function startWorker(){
         const handler = eventRegistry[event.type];
 
         if(!handler) {
-            console.log(`[WORKER] No handler found for ${event.type}`);
+            loggingService.error(LOG_COMPONENTS.WORKER, 'No handler found', {eventId: event.id, eventType: event.type});
             return;
         }
 
         try {
-        await handler.handle(event);
-        console.log(`[WORKER] Successfully processed ${event.id}`);
+            loggingService.info(LOG_COMPONENTS.WORKER, 'Processing Event', {eventId: event.id, eventType: event.type});
+            await handler.handle(event);
+            metricsService.incrementProcessed();
+            loggingService.info(LOG_COMPONENTS.WORKER, 'Event Processed', {eventId: event.id, eventType: event.type});
+        
         } catch(error){
-            console.log(`[WORKER] Error Processing ${event.id}: ${error}`);
+            metricsService.incrementFailed();
+            loggingService.error(LOG_COMPONENTS.WORKER, 'Event Processing Failed', {eventId: event.id, eventType: event.type, retryCount: event.retryCount, error: error instanceof Error ? error.message : 'Unknown error'});
             event.retryCount++;
+
             if(event.retryCount <= WORKER_CONFIG.MAX_RETRIES){
-                console.log(`[WORKER] Retrying ${event.id} (Attempt ${event.retryCount})`);
-                eventQueue.enqueue(event);
+                metricsService.incrementRetried();
+                loggingService.warn(LOG_COMPONENTS.WORKER, 'Retrying Event', {eventId: event.id, eventType: event.type, retryCount: event.retryCount});
+                queue.enqueue(event);
             } else {
+                metricsService.incrementDeadLettered();
                 deadLetterQueue.add(event);
-                console.log(`[WORKER] Dead-Lettered ${event.id}`);
+                loggingService.error(LOG_COMPONENTS.WORKER, 'Event moved to DLQ', {eventId: event.id, eventType: event.type, retryCount: event.retryCount});
             }
         }
 
