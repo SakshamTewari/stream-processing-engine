@@ -6,7 +6,7 @@ import {eventValidatorRegistry} from "../events/event-validator.registry";
 
 export const router = express.Router();
 
-router.post('/events', (req, res) => {
+router.post('/', (req, res) => {
     console.log(req.body);
     
     const {type, payload} = req.body;
