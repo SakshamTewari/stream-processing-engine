@@ -8,4 +8,6 @@ export type LogComponent =
     | 'WORKER'
     | 'QUEUE'
     | 'EVENT_STORE'
-    | 'DLQ';
+    | 'DLQ'
+    | 'RECOVERY'
+    | 'WORKER_POOL';

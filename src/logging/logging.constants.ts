@@ -4,4 +4,6 @@ export const LOG_COMPONENTS = {
     QUEUE: 'QUEUE',
     EVENT_STORE: 'EVENT_STORE',
     DLQ: 'DLQ',
+    RECOVERY: 'RECOVERY',
+    WORKER_POOL: 'WORKER_POOL',
 } as const;
