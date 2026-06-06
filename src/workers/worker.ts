@@ -24,6 +24,7 @@ import {metricsService} from "../metrics/metrics.service";
 import { loggingService } from "../logging/logging.service";
 import  { LOG_COMPONENTS } from "../logging/logging.constants";
 import {getEventStore} from "../event-store/event-store.factory";
+import {WorkerState} from "./worker.types";
 
 /*
 function sleep(ms: number){
@@ -31,44 +32,62 @@ function sleep(ms: number){
 }
 */
 
+export class Worker {
+    private state: WorkerState = 'IDLE';
+    constructor(private readonly id: number){}
 
-export async function processNextEvent(): Promise<void>{
-   
+    getId(): number {
+        return this.id;
+    };
 
-    const queue = getQueue();
-    const eventStore = getEventStore();
-    const event = queue.dequeue();
+    getState(): WorkerState {
+        return this.state;
+    };
 
-    if(!event) return;
+    async poll(): Promise<void> {
+        if(this.state === 'BUSY') return;
+
+        const queue = getQueue();
+        const eventStore = getEventStore();
+        const event = queue.dequeue();
+
+        if(!event) return;
+
+        this.state = 'BUSY';
 
         
-    const handler = eventRegistry[event.type];
+        try {
+            const handler = eventRegistry[event.type];
 
-    if(!handler) {
-        loggingService.error(LOG_COMPONENTS.WORKER, 'No handler found', {eventId: event.id, eventType: event.type});
-        return;
-    }
+            if(!handler) {
+            loggingService.error(LOG_COMPONENTS.WORKER, 'No handler found', {workerId: this.id,eventId: event.id, eventType: event.type});
+            return;
+            };
 
-    try {
-        loggingService.info(LOG_COMPONENTS.WORKER, 'Processing Event', {eventId: event.id, eventType: event.type});
-        await handler.handle(event);
-        await eventStore.remove(event.id);
-        metricsService.incrementProcessed();
-        loggingService.info(LOG_COMPONENTS.WORKER, 'Event Processed', {eventId: event.id, eventType: event.type});
-        
-    } catch(error){
-        metricsService.incrementFailed();
-        loggingService.error(LOG_COMPONENTS.WORKER, 'Event Processing Failed', {eventId: event.id, eventType: event.type, retryCount: event.retryCount, error: error instanceof Error ? error.message : 'Unknown error'});
-        event.retryCount++;
+            loggingService.info(LOG_COMPONENTS.WORKER, 'Processing Event', {workerId: this.id, eventId: event.id, eventType: event.type});
+            await handler.handle(event);
+            await eventStore.remove(event.id);
+            metricsService.incrementProcessed();
+            loggingService.info(LOG_COMPONENTS.WORKER, 'Event Processed', {workerId: this.id, eventId: event.id, eventType: event.type});
+            
+        } catch(error){
+            metricsService.incrementFailed();
+            loggingService.error(LOG_COMPONENTS.WORKER, 'Event Processing Failed', {eventId: event.id, eventType: event.type, retryCount: event.retryCount, error: error instanceof Error ? error.message : 'Unknown error'});
+            event.retryCount++;
 
-        if(event.retryCount <= WORKER_CONFIG.MAX_RETRIES){
-            metricsService.incrementRetried();
-            loggingService.warn(LOG_COMPONENTS.WORKER, 'Retrying Event', {eventId: event.id, eventType: event.type, retryCount: event.retryCount});
-            queue.enqueue(event);
-        } else {
-            metricsService.incrementDeadLettered();
-            deadLetterQueue.add(event);
-            loggingService.error(LOG_COMPONENTS.WORKER, 'Event moved to DLQ', {eventId: event.id, eventType: event.type, retryCount: event.retryCount});
+            if(event.retryCount <= WORKER_CONFIG.MAX_RETRIES){
+                metricsService.incrementRetried();
+                loggingService.warn(LOG_COMPONENTS.WORKER, 'Retrying Event', {eventId: event.id, eventType: event.type, retryCount: event.retryCount});
+                queue.enqueue(event);
+            } else {
+                metricsService.incrementDeadLettered();
+                deadLetterQueue.add(event);
+                loggingService.error(LOG_COMPONENTS.WORKER, 'Event moved to DLQ', {eventId: event.id, eventType: event.type, retryCount: event.retryCount});
+            }
         }
-    };   
+        finally {
+            this.state = 'IDLE';
+        }   
+    }
 }
+
