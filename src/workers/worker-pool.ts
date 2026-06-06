@@ -9,20 +9,26 @@ Queue  →  Worker-2
 */
 
 import {WORKER_CONFIG} from "../config/worker.config";
-import {processNextEvent} from "./worker";
+import {Worker} from "./worker";
 import {loggingService} from "../logging/logging.service";
 import {LOG_COMPONENTS} from "../logging/logging.constants";
 
-export function startWorkerPool(): void {
-    // start multiple worker instances to process events from the queue
-    for(let i = 0; i < WORKER_CONFIG.WORKER_COUNT; i++ ){
-        setInterval(processNextEvent, WORKER_CONFIG.POLL_INTERVAL_MS);
+export class WorkerPool {
+  private readonly workers: Worker[] = [];
 
+  start(): void {
+    for(let i = 0; i < WORKER_CONFIG.WORKER_COUNT; i++ ){
+      const worker = new Worker(i+1);
+      this.workers.push(worker);
+        setInterval(() => worker.poll(), WORKER_CONFIG.POLL_INTERVAL_MS);
         loggingService.info(LOG_COMPONENTS.WORKER_POOL, `Started worker instance ${i+1}`);
     };
-};
+  };
 
-
+  getWorkers(): Worker[] {
+    return this.workers;
+  }
+}
 /*
 Future Enhancements:
 
