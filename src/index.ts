@@ -4,12 +4,12 @@ import {deadLetterRouter} from "./api/dead-letter.routes";
 import {metricsRouter} from "./api/metrics.route";
 import {healthRouter} from "./api/health.route";
 import {recoveryService} from "./recovery/recovery.service";
-import { startWorkerPool } from './workers/worker-pool';
+import { WorkerPool } from './workers/worker-pool';
 
 
 const PORT = 3000;
 const app = express();
-
+const workerPool = new WorkerPool();
 app.use(express.json());
 
 app.use('/api/events', router);
@@ -29,6 +29,6 @@ app.listen(PORT, async () => {
     
     // Recover events from previous runs and enqueue them for processing first
     await recoveryService.recover();
-    startWorkerPool();
+    workerPool.start();
 });
 
