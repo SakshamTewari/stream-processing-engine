@@ -55,34 +55,39 @@ export class Worker {
 
         this.state = 'BUSY';
 
+        await eventStore.markProcessing(event.id);
         
         try {
             const handler = eventRegistry[event.type];
 
             if(!handler) {
             loggingService.error(LOG_COMPONENTS.WORKER, 'No handler found', {workerId: this.id,eventId: event.id, eventType: event.type});
+            await eventStore.markFailed(event.id);
             return;
             };
 
             loggingService.info(LOG_COMPONENTS.WORKER, 'Processing Event', {workerId: this.id, eventId: event.id, eventType: event.type});
             await handler.handle(event);
-            await eventStore.remove(event.id);
+            // await eventStore.remove(event.id);
+            await eventStore.markCompleted(event.id);
             metricsService.incrementProcessed();
             loggingService.info(LOG_COMPONENTS.WORKER, 'Event Processed', {workerId: this.id, eventId: event.id, eventType: event.type});
             
         } catch(error){
             metricsService.incrementFailed();
-            loggingService.error(LOG_COMPONENTS.WORKER, 'Event Processing Failed', {eventId: event.id, eventType: event.type, retryCount: event.retryCount, error: error instanceof Error ? error.message : 'Unknown error'});
+            loggingService.error(LOG_COMPONENTS.WORKER, 'Event Processing Failed', {workerId: this.id, eventId: event.id, eventType: event.type, retryCount: event.retryCount, error: error instanceof Error ? error.message : 'Unknown error'});
             event.retryCount++;
 
             if(event.retryCount <= WORKER_CONFIG.MAX_RETRIES){
+                await eventStore.markPending(event.id);
                 metricsService.incrementRetried();
-                loggingService.warn(LOG_COMPONENTS.WORKER, 'Retrying Event', {eventId: event.id, eventType: event.type, retryCount: event.retryCount});
+                loggingService.warn(LOG_COMPONENTS.WORKER, 'Retrying Event', {workerId: this.id, eventId: event.id, eventType: event.type, retryCount: event.retryCount});
                 queue.enqueue(event);
             } else {
+                await eventStore.markFailed(event.id);
                 metricsService.incrementDeadLettered();
                 deadLetterQueue.add(event);
-                loggingService.error(LOG_COMPONENTS.WORKER, 'Event moved to DLQ', {eventId: event.id, eventType: event.type, retryCount: event.retryCount});
+                loggingService.error(LOG_COMPONENTS.WORKER, 'Event moved to DLQ', {workerId: this.id,eventId: event.id, eventType: event.type, retryCount: event.retryCount});
             }
         }
         finally {
