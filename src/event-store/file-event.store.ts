@@ -60,6 +60,15 @@ export class FileEventStore implements EventStore {
         if(!event) return;
         event.status = 'FAILED';
         await this.writeEvents(events);
+    };
+
+    async markPending(eventId: string): Promise<void> {
+        const events = await this.readEvents();
+        const event = events.find(e => e.event.id === eventId);
+        if(!event) return;
+        event.status = 'PENDING';
+        delete event.claimedAt;
+        await this.writeEvents(events);
     }
 
     /*

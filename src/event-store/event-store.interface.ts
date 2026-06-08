@@ -20,5 +20,6 @@ export interface EventStore {
     markProcessing(eventId: string): Promise<void>;
     markCompleted(eventId: string): Promise<void>;
     markFailed(eventId: string): Promise<void>;
+    markPending(eventId: string): Promise<void>;
     // remove(eventId: string): Promise<void>;    not needed now as we have EventStatus now
 }
