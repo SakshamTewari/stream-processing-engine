@@ -1,21 +1,13 @@
 /*
-POST Event
-      ↓
- Event Store
-      ↓
-    Queue
-      ↓
-   Worker
-      ↓
-  Handler
-
-Application Startup
-      ↓
- Recovery Service
-      ↓
- Event Store
-      ↓
-    Queue
+Startup
+ ↓
+Read EventStore
+ ↓
+Find PENDING events
+ ↓
+Enqueue them
+ ↓
+Workers continue processing
 */
 
 import {getEventStore} from "../event-store/event-store.factory";
@@ -31,10 +23,12 @@ export class RecoveryService {
         const queue = getQueue();
         const events = await eventStore.getAll();
 
-        for(const event of events){
-            queue.enqueue(event);
+        const pendingEvents = events.filter(e => e.status === 'PENDING');
+
+        for(const storedEvent of pendingEvents){
+            queue.enqueue(storedEvent.event);
         }
-        loggingService.info(LOG_COMPONENTS.RECOVERY,`Recovered ${events.length} events and enqueued them for processing`);
+        loggingService.info(LOG_COMPONENTS.RECOVERY,`Recovery Completed`, {recoveredEvents: pendingEvents.length});
     }
 }
 
