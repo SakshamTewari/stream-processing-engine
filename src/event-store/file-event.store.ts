@@ -3,6 +3,7 @@ import path from 'path';
 import type {BaseEvent} from "../events/event.types";
 import type {EventStore} from "./event-store.interface";
 import type {StoredEvent} from "./event-store.types";
+import {RECOVERY_CONFIG} from "../recovery/recovery.config";
 
 export class FileEventStore implements EventStore {
     private readonly filePath = path.join(process.cwd(), 'events.json');  // process.cwd() => from where node command is run
@@ -69,6 +70,12 @@ export class FileEventStore implements EventStore {
         event.status = 'PENDING';
         delete event.claimedAt;
         await this.writeEvents(events);
+    };
+
+    async getStaleProcessingEvents(): Promise<StoredEvent[]> {
+        const events = await this.readEvents();
+        const now = Date.now();
+        return events.filter(e => e.status === 'PROCESSING' && e.claimedAt !== undefined && (now - e.claimedAt) > RECOVERY_CONFIG.VISIBILITY_TIMEOUT_MS);
     }
 
     /*

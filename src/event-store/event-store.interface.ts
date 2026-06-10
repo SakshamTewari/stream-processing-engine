@@ -21,5 +21,6 @@ export interface EventStore {
     markCompleted(eventId: string): Promise<void>;
     markFailed(eventId: string): Promise<void>;
     markPending(eventId: string): Promise<void>;
+    getStaleProcessingEvents(): Promise<StoredEvent[]>;
     // remove(eventId: string): Promise<void>;    not needed now as we have EventStatus now
 }
