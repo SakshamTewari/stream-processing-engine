@@ -1,0 +1,3 @@
+export const RECOVERY_CONFIG = {
+    VISIBILITY_TIMEOUT_MS: 5*60*1000,
+}
