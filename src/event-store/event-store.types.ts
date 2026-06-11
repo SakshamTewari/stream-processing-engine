@@ -7,4 +7,5 @@ export interface StoredEvent {
     storedAt: number;
     claimedAt?: number;
     completedAt?: number;
+    deliveryAttempts: number;
 }

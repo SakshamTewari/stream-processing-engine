@@ -27,6 +27,7 @@ export class FileEventStore implements EventStore {
             event,
             status: 'PENDING',
             storedAt: Date.now(),
+            deliveryAttempts: 0,
         }
         events.push(storedEvent);
         await this.writeEvents(events);
@@ -42,6 +43,7 @@ export class FileEventStore implements EventStore {
         if(!event) return;
         event.status = 'PROCESSING';
         event.claimedAt = Date.now();
+        event.deliveryAttempts++;
         await this.writeEvents(events);
     };
 
