@@ -25,6 +25,7 @@ import { loggingService } from "../logging/logging.service";
 import  { LOG_COMPONENTS } from "../logging/logging.constants";
 import {getEventStore} from "../event-store/event-store.factory";
 import {WorkerState} from "./worker.types";
+import {ackService} from "../acknowledgement/ack.service";
 
 /*
 function sleep(ms: number){
@@ -69,7 +70,8 @@ export class Worker {
             loggingService.info(LOG_COMPONENTS.WORKER, 'Processing Event', {workerId: this.id, eventId: event.id, eventType: event.type});
             await handler.handle(event);
             // await eventStore.remove(event.id);
-            await eventStore.markCompleted(event.id);
+            // await eventStore.markCompleted(event.id);
+            await ackService.acknowledge(event.id);
             metricsService.incrementProcessed();
             loggingService.info(LOG_COMPONENTS.WORKER, 'Event Processed', {workerId: this.id, eventId: event.id, eventType: event.type});
             
