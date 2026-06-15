@@ -26,6 +26,7 @@ import  { LOG_COMPONENTS } from "../logging/logging.constants";
 import {getEventStore} from "../event-store/event-store.factory";
 import {WorkerState} from "./worker.types";
 import {ackService} from "../acknowledgement/ack.service";
+import {idempotencyService} from "../idempotency/idempotency.service";
 
 /*
 function sleep(ms: number){
@@ -51,6 +52,7 @@ export class Worker {
         const queue = getQueue();
         const eventStore = getEventStore();
         const event = queue.dequeue();
+    
 
         if(!event) return;
 
@@ -59,18 +61,30 @@ export class Worker {
         await eventStore.markProcessing(event.id);
         
         try {
+
+            // check if duplicate
+            const isDuplicate = await idempotencyService.isDuplicate(event.id);
+            if(isDuplicate){
+                loggingService.warn(LOG_COMPONENTS.WORKER, 'Duplicate event skipped', {workerId: this.id, eventId: event.id, eventType: event.type});
+                await ackService.acknowledge(event.id);
+            }
+
+            // handle event
             const handler = eventRegistry[event.type];
 
+            // if no handler found
             if(!handler) {
             loggingService.error(LOG_COMPONENTS.WORKER, 'No handler found', {workerId: this.id,eventId: event.id, eventType: event.type});
             await eventStore.markFailed(event.id);
             return;
             };
 
+            // Process event
             loggingService.info(LOG_COMPONENTS.WORKER, 'Processing Event', {workerId: this.id, eventId: event.id, eventType: event.type});
             await handler.handle(event);
             // await eventStore.remove(event.id);
             // await eventStore.markCompleted(event.id);
+            await idempotencyService.markProcessed(event.id);
             await ackService.acknowledge(event.id);
             metricsService.incrementProcessed();
             loggingService.info(LOG_COMPONENTS.WORKER, 'Event Processed', {workerId: this.id, eventId: event.id, eventType: event.type});
