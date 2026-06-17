@@ -8,4 +8,5 @@ export interface StoredEvent {
     claimedAt?: number;
     completedAt?: number;
     deliveryAttempts: number;
+    nextRetryAt?: number;
 }
