@@ -1,0 +1,4 @@
+export const RETRY_CONFIG = {
+    BASE_DELAY_MS: 5*1000,
+    MAX_DELAY_MS: 5*60*1000,
+}
