@@ -4,6 +4,7 @@ import type {BaseEvent} from "../events/event.types";
 import type {EventStore} from "./event-store.interface";
 import type {StoredEvent} from "./event-store.types";
 import {RECOVERY_CONFIG} from "../recovery/recovery.config";
+import {RETRY_CONFIG} from "../config/retry.config";
 
 export class FileEventStore implements EventStore {
     private readonly filePath = path.join(process.cwd(), 'events.json');  // process.cwd() => from where node command is run
@@ -78,6 +79,17 @@ export class FileEventStore implements EventStore {
         const events = await this.readEvents();
         const now = Date.now();
         return events.filter(e => e.status === 'PROCESSING' && e.claimedAt !== undefined && (now - e.claimedAt) > RECOVERY_CONFIG.VISIBILITY_TIMEOUT_MS);
+    };
+
+    async scheduleRetry(eventId: string, retryCount: number): Promise<void> {
+        const events = await this.readEvents();
+        const storedEvent = events.find(e => e.event.id === eventId);
+        if(!storedEvent) return;
+        const delay = Math.min(RETRY_CONFIG.BASE_DELAY_MS * Math.pow(2, retryCount-1), RETRY_CONFIG.MAX_DELAY_MS);
+        storedEvent.status = 'PENDING';
+        delete storedEvent.claimedAt;
+        storedEvent.nextRetryAt = Date.now() + delay;
+        await this.writeEvents(events);
     }
 
     /*
