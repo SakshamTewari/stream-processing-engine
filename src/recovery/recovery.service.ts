@@ -23,7 +23,7 @@ export class RecoveryService {
         const queue = getQueue();
         const events = await eventStore.getAll();
 
-        const pendingEvents = events.filter(e => e.status === 'PENDING');
+        const pendingEvents = events.filter(e => e.status === 'PENDING' && (!e.nextRetryAt || e.nextRetryAt <= Date.now()));
         const staleProcessingEvents = await eventStore.getStaleProcessingEvents();
 
         for(const storedEvent of pendingEvents){
