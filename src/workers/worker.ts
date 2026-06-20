@@ -67,6 +67,7 @@ export class Worker {
             if(isDuplicate){
                 loggingService.warn(LOG_COMPONENTS.WORKER, 'Duplicate event skipped', {workerId: this.id, eventId: event.id, eventType: event.type});
                 await ackService.acknowledge(event.id);
+                return;
             }
 
             // handle event
@@ -95,10 +96,11 @@ export class Worker {
             event.retryCount++;
 
             if(event.retryCount <= WORKER_CONFIG.MAX_RETRIES){
-                await eventStore.markPending(event.id);
+                // await eventStore.markPending(event.id);
+                await eventStore.scheduleRetry(event.id, event.retryCount);
                 metricsService.incrementRetried();
                 loggingService.warn(LOG_COMPONENTS.WORKER, 'Retrying Event', {workerId: this.id, eventId: event.id, eventType: event.type, retryCount: event.retryCount});
-                queue.enqueue(event);
+                // queue.enqueue(event);
             } else {
                 await eventStore.markFailed(event.id);
                 metricsService.incrementDeadLettered();
