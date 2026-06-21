@@ -6,4 +6,5 @@ export interface BaseEvent<T = any>{
     payload: T;
     createdAt: number;
     retryCount: number;
+    correlationId: string;
 }
