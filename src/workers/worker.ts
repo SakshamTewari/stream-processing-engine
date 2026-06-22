@@ -65,7 +65,7 @@ export class Worker {
             // check if duplicate
             const isDuplicate = await idempotencyService.isDuplicate(event.id);
             if(isDuplicate){
-                loggingService.warn(LOG_COMPONENTS.WORKER, 'Duplicate event skipped', {workerId: this.id, eventId: event.id, eventType: event.type});
+                loggingService.warn(LOG_COMPONENTS.WORKER, 'Duplicate event skipped', {workerId: this.id, eventId: event.id, eventType: event.type, correlationId: event.correlationId});
                 await ackService.acknowledge(event.id);
                 return;
             }
@@ -75,24 +75,24 @@ export class Worker {
 
             // if no handler found
             if(!handler) {
-            loggingService.error(LOG_COMPONENTS.WORKER, 'No handler found', {workerId: this.id,eventId: event.id, eventType: event.type});
+            loggingService.error(LOG_COMPONENTS.WORKER, 'No handler found', {workerId: this.id,eventId: event.id, eventType: event.type, correlationId: event.correlationId});
             await eventStore.markFailed(event.id);
             return;
             };
 
             // Process event
-            loggingService.info(LOG_COMPONENTS.WORKER, 'Processing Event', {workerId: this.id, eventId: event.id, eventType: event.type});
+            loggingService.info(LOG_COMPONENTS.WORKER, 'Processing Event', {workerId: this.id, eventId: event.id, eventType: event.type, correlationId: event.correlationId});
             await handler.handle(event);
             // await eventStore.remove(event.id);
             // await eventStore.markCompleted(event.id);
             await idempotencyService.markProcessed(event.id);
             await ackService.acknowledge(event.id);
             metricsService.incrementProcessed();
-            loggingService.info(LOG_COMPONENTS.WORKER, 'Event Processed', {workerId: this.id, eventId: event.id, eventType: event.type});
+            loggingService.info(LOG_COMPONENTS.WORKER, 'Event Processed', {workerId: this.id, eventId: event.id, eventType: event.type, correlationId: event.correlationId});
             
         } catch(error){
             metricsService.incrementFailed();
-            loggingService.error(LOG_COMPONENTS.WORKER, 'Event Processing Failed', {workerId: this.id, eventId: event.id, eventType: event.type, retryCount: event.retryCount, error: error instanceof Error ? error.message : 'Unknown error'});
+            loggingService.error(LOG_COMPONENTS.WORKER, 'Event Processing Failed', {workerId: this.id, eventId: event.id, eventType: event.type, retryCount: event.retryCount, correlationId: event.correlationId, error: error instanceof Error ? error.message : 'Unknown error'});
             event.retryCount++;
 
             if(event.retryCount <= WORKER_CONFIG.MAX_RETRIES){
@@ -105,7 +105,7 @@ export class Worker {
                 await eventStore.markFailed(event.id);
                 metricsService.incrementDeadLettered();
                 deadLetterQueue.add(event);
-                loggingService.error(LOG_COMPONENTS.WORKER, 'Event moved to DLQ', {workerId: this.id,eventId: event.id, eventType: event.type, retryCount: event.retryCount});
+                loggingService.error(LOG_COMPONENTS.WORKER, 'Event moved to DLQ', {workerId: this.id,eventId: event.id, eventType: event.type, retryCount: event.retryCount, correlationId: event.correlationId});
             }
         }
         finally {
