@@ -19,38 +19,33 @@ Metrics Service
 Metrics API
 */
 
+import { metricsStore } from "./metrics.store";
+import { Metrics } from "./metrics.types";
+
 class MetricsService {
-    private processedEvents = 0;
-    private failedEvents = 0;
-    private retriedEvents = 0;
-    private deadLetteredEvents = 0;
 
     incrementProcessed() {
-        this.processedEvents++;
+        metricsStore.getMetrics().processed++;
     };
 
     incrementFailed() {
-
-      this.failedEvents++;
+      metricsStore.getMetrics().failed++;
    };
 
    incrementRetried() {
-
-      this.retriedEvents++;
+      metricsStore.getMetrics().retried++;
    };
 
    incrementDeadLettered() {
-
-      this.deadLetteredEvents++;
+      metricsStore.getMetrics().deadLettered++;
    };
 
-   getMetrics() {
-    return {
-        processedEvents : this.processedEvents,
-        failedEvents: this.failedEvents,
-        retriedEvents: this.retriedEvents,
-        deadLetteredEvents: this.deadLetteredEvents,
-    };
+   incrementRejected() {
+      metricsStore.getMetrics().rejected++;
+   };
+
+   getMetrics(): Metrics {
+    return metricsStore.getMetrics();
    };
 };
 
